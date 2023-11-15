@@ -186,14 +186,12 @@ export class PostsService {
         throw new HttpException('No post found', 404);
       }
     }
+
+    throw new HttpException('Post deleted', 200);
   }
 
   async likePost(currentUserId: string, postId: string) {
-    const post = await this.prisma.post.findUnique({
-      where: {
-        id: postId,
-      },
-    });
+    const post = await this.getPostById(postId);
 
     if (!post) {
       throw new HttpException('No post found', 404);
@@ -237,11 +235,7 @@ export class PostsService {
   }
 
   async unlikePost(currentUserId: string, postId: string) {
-    const post = await this.prisma.post.findUnique({
-      where: {
-        id: postId,
-      },
-    });
+    const post = await this.getPostById(postId);
 
     if (!post) {
       throw new HttpException('No post found', 404);

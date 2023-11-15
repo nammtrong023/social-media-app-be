@@ -134,5 +134,7 @@ export class MessagesService {
         id: removeMessage.messageId,
       },
     });
+
+    throw new HttpException('Message deleted', 200);
   }
 }

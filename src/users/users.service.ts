@@ -50,7 +50,6 @@ export class UsersService {
   }
 
   async getOtherUsers(
-    currentUserId: string,
     filters: FilterType,
     email: string,
   ): Promise<UserPaginationType> {
@@ -81,31 +80,11 @@ export class UsersService {
       },
     });
 
-    const total = await this.prisma.user.count({
-      where: {
-        OR: [
-          {
-            name: {
-              contains: search,
-            },
-          },
-          {
-            email: {
-              contains: search,
-            },
-          },
-        ],
-        NOT: {
-          id: currentUserId,
-        },
-      },
-    });
-
     return {
       data: users,
       itemsPerPage,
       currentPage: page,
-      total,
+      total: users.length,
     };
   }
 
@@ -188,19 +167,9 @@ export class UsersService {
   async followUser(userId: string, currentUserId: string) {
     if (userId === currentUserId) return;
 
-    const user = await this.prisma.user.findUnique({
-      where: {
-        id: userId,
-      },
-    });
+    await this.getUserById(userId);
 
-    const currentUser = await this.prisma.user.findUnique({
-      where: {
-        id: currentUserId,
-      },
-    });
-
-    if (!user) throw new HttpException('No user found', 404);
+    const currentUser = await this.getUserById(currentUserId);
 
     const isExistingId = currentUser.followingIds.includes(userId);
 
@@ -231,20 +200,9 @@ export class UsersService {
 
   async unfollowUser(userId: string, currentUserId: string) {
     if (userId === currentUserId) return;
+    await this.getUserById(userId);
 
-    const user = await this.prisma.user.findUnique({
-      where: {
-        id: userId,
-      },
-    });
-
-    const currentUser = await this.prisma.user.findUnique({
-      where: {
-        id: currentUserId,
-      },
-    });
-
-    if (!user) throw new HttpException('No user found', 404);
+    const currentUser = await this.getUserById(currentUserId);
 
     const isExistingId = currentUser.followingIds.includes(userId);
 
@@ -273,13 +231,7 @@ export class UsersService {
   }
 
   async getFollowers(userId: string): Promise<User[]> {
-    const user = await this.prisma.user.findUnique({
-      where: {
-        id: userId,
-      },
-    });
-
-    if (!user) throw new HttpException('User not found', 404);
+    await this.getUserById(userId);
 
     const followerUsers = await this.prisma.user.findMany({
       where: {
@@ -293,13 +245,7 @@ export class UsersService {
   }
 
   async getFollowings(userId: string): Promise<User[]> {
-    const user = await this.prisma.user.findUnique({
-      where: {
-        id: userId,
-      },
-    });
-
-    if (!user) throw new HttpException('User not found', 404);
+    const user = await this.getUserById(userId);
 
     const followingUsers = await this.prisma.user.findMany({
       where: {

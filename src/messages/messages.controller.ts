@@ -1,12 +1,11 @@
-import { Controller, Post, Body, UseGuards, Get, Query } from '@nestjs/common';
+import { Controller, Post, Body, Get, Query, Delete } from '@nestjs/common';
 import { MessagesService } from './messages.service';
 import { CreateMessageDto } from './dto/create-message.dto';
-import { AtGuard } from 'src/common/guard/at.guard';
 import { GetCurrentUserId } from 'src/common/decorator/get-current-user-id';
 import { MessagePaginationType } from 'types';
+import { RemoveMessageDto } from './dto/remove-message.dto';
 
 @Controller('messages')
-@UseGuards(AtGuard)
 export class MessagesController {
   constructor(private messagesService: MessagesService) {}
 
@@ -26,8 +25,8 @@ export class MessagesController {
     return this.messagesService.create(currentUserId, createMessageDto);
   }
 
-  // @Delete(':id')
-  // remove(@Param('id') id: string) {
-  //   return this.messagesService.remove(+id);
-  // }
+  @Delete(':messageId')
+  remove(@Query() removeMessage: RemoveMessageDto) {
+    return this.messagesService.remove(removeMessage);
+  }
 }

@@ -1,20 +1,10 @@
-import {
-  Get,
-  Post,
-  Body,
-  Param,
-  Delete,
-  Controller,
-  UseGuards,
-} from '@nestjs/common';
-import { AtGuard } from 'src/common/guard/at.guard';
+import { Get, Post, Body, Param, Delete, Controller } from '@nestjs/common';
 import { ConversationsService } from './conversations.service';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { GetCurrentUserId } from 'src/common/decorator/get-current-user-id';
 import { Conversation } from '@prisma/client';
 
 @Controller('conversations')
-@UseGuards(AtGuard)
 export class ConversationsController {
   constructor(private conversationsService: ConversationsService) {}
 
@@ -39,8 +29,11 @@ export class ConversationsController {
     return this.conversationsService.findOne(convoId);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.conversationsService.remove(+id);
+  @Delete(':conversationId')
+  remove(
+    @GetCurrentUserId() currentUserId: string,
+    @Param('conversationId') convoId: string,
+  ) {
+    return this.conversationsService.remove(convoId, currentUserId);
   }
 }

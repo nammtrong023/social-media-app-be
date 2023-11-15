@@ -9,10 +9,8 @@ import {
   Controller,
   HttpCode,
   HttpStatus,
-  UseGuards,
 } from '@nestjs/common';
 import { CommentsService } from './comments.service';
-import { AtGuard } from 'src/common/guard/at.guard';
 import { GetCurrentUserId } from 'src/common/decorator/get-current-user-id';
 import { Comment } from '@prisma/client';
 import { CommentPaginationType, FilterType } from 'types';
@@ -20,7 +18,6 @@ import { UpdateCommentDto } from './dto/update-comment.dto';
 import { CreateCommentDto } from './dto/create-comment.dto';
 
 @Controller('comments')
-@UseGuards(AtGuard)
 export class CommentsController {
   constructor(private commentsService: CommentsService) {}
 

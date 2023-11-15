@@ -113,5 +113,7 @@ export class CommentsService {
     await this.prisma.comment.delete({
       where: { id: commentId },
     });
+
+    throw new HttpException('Comment deleted', 200);
   }
 }

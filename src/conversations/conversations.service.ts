@@ -1,6 +1,5 @@
 import { ForbiddenException, HttpException, Injectable } from '@nestjs/common';
 import { CreateConversationDto } from './dto/create-conversation.dto';
-import { UpdateConversationDto } from './dto/update-conversation.dto';
 import { PrismaService } from 'src/prisma.service';
 import { Conversation } from '@prisma/client';
 
@@ -95,7 +94,7 @@ export class ConversationsService {
   }
 
   async findOne(conversationId: string): Promise<Conversation> {
-    const conversation = await this.prisma.conversation.findUnique({
+    const conversation = await this.prisma.conversation.findFirst({
       where: {
         id: conversationId,
       },
@@ -109,18 +108,26 @@ export class ConversationsService {
       },
     });
 
+    if (!conversation) {
+      throw new HttpException('Not found conversation', 404);
+    }
+
     return conversation;
   }
 
-  update(id: number, updateConversationDto: UpdateConversationDto) {
-    console.log(
-      'ConversationsService ~ update ~ updateConversationDto:',
-      updateConversationDto,
-    );
-    return `This action updates a #${id} conversation`;
-  }
+  async remove(convoId: string, currentUserId: string) {
+    const conversation = await this.findOne(convoId);
 
-  remove(id: number) {
-    return `This action removes a #${id} conversation`;
+    if (!conversation.userIds.includes(currentUserId)) {
+      throw new ForbiddenException();
+    }
+
+    await this.prisma.conversation.delete({
+      where: {
+        id: convoId,
+      },
+    });
+
+    throw new HttpException('Deleted conversation successfully', 200);
   }
 }

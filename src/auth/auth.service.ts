@@ -16,12 +16,6 @@ export class AuthService {
     private config: ConfigService,
   ) {}
 
-  // For each step, will have a async function
-  // B1: Sign Up
-  // B2: Generate tokens
-  // B3: Login and return to generateTokens
-  // B4: Update refresh_tokens
-
   async signup(createDto: RegisterDto): Promise<User> {
     const user = await this.prisma.user.findUnique({
       where: {
@@ -105,12 +99,12 @@ export class AuthService {
 
     const accessToken = await this.jwtService.signAsync(jwtPayload, {
       secret: this.config.get<string>('AT_SECRET'),
-      expiresIn: '1h',
+      expiresIn: this.config.get<string>('EXP_AT'),
     });
 
     const refreshToken = await this.jwtService.signAsync(jwtPayload, {
       secret: this.config.get<string>('RT_SECRET'),
-      expiresIn: '7d',
+      expiresIn: this.config.get<string>('EXP_RT'),
     });
 
     return { accessToken, refreshToken };

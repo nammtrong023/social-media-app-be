@@ -41,11 +41,10 @@ export class UsersController {
   @Get('other-users')
   @HttpCode(HttpStatus.OK)
   getOtherUsers(
-    @GetCurrentUserId() currentUserId: string,
     @GetCurrentUser('email') email: string,
     @Query() params: FilterType,
   ): Promise<UserPaginationType> {
-    return this.userService.getOtherUsers(currentUserId, params, email);
+    return this.userService.getOtherUsers(params, email);
   }
 
   @Get(':id')
