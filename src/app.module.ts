@@ -11,6 +11,7 @@ import { CommentsModule } from './comments/comments.module';
 import { ConversationsModule } from './conversations/conversations.module';
 import { EventsModule } from './events/events.module';
 import { MessagesModule } from './messages/messages.module';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { MessagesModule } from './messages/messages.module';
     MessagesModule,
     ConversationsModule,
     EventsModule,
+    MailModule,
   ],
   controllers: [AppController],
   providers: [

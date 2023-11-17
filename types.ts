@@ -10,6 +10,11 @@ export type JwtPayload = {
   email: string;
 };
 
+export type UserType = {
+  email: string;
+  name: string;
+};
+
 export type JwtPayloadWithRtToken = JwtPayload & { refreshToken: string };
 export type JwtPayloadWithAtToken = JwtPayload & { accessToken: string };
 export type JwtPayloadWithTokens = JwtPayload & Tokens;
