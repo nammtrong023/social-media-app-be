@@ -1,22 +1,66 @@
+import { hash } from 'bcryptjs';
+import { CodeType, User } from '@prisma/client';
+import { PrismaService } from 'src/prisma.service';
 import { MailerService } from '@nestjs-modules/mailer';
-import { Injectable } from '@nestjs/common';
-import { User } from '@prisma/client';
+import { HttpException, Injectable, NotFoundException } from '@nestjs/common';
 
 @Injectable()
 export class MailService {
-  constructor(private mailerService: MailerService) {}
+  constructor(
+    private mailerService: MailerService,
+    private prisma: PrismaService,
+  ) {}
 
   async sendUserConfirmation(user: User, token: string) {
-    const url = `http://localhost:3000/confirm?reset-token=${token}`;
+    const url = `http://localhost:3000/password-recovery?reset-token=${token}`;
 
     await this.mailerService.sendMail({
       to: user.email,
-      subject: '🔒 Reset your password.',
+      subject: '🔒 Đặt lại mật khẩu.',
       template: './templates/confirmation.hbs',
       context: {
         name: user.name,
         url,
       },
     });
+  }
+
+  async sendOTPVerification(email: string) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        email,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Email not found');
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedOTP = await hash(otp, 10);
+
+    await this.mailerService.sendMail({
+      to: email,
+      subject: `${otp} là mã xác minh của bạn.`,
+      template: './templates/verify-email.hbs',
+      context: {
+        otp,
+        name: user.name,
+      },
+    });
+
+    const hour = 1000 * 60 * 60;
+    const futureTimestamp = Date.now() + hour * 24;
+
+    await this.prisma.code.create({
+      data: {
+        expiredAt: new Date(futureTimestamp),
+        type: CodeType.OTP,
+        code: hashedOTP,
+        userId: user.id,
+      },
+    });
+
+    throw new HttpException('Otp has been sent', 201);
   }
 }

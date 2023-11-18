@@ -40,13 +40,21 @@ export class UsersService {
       throw new HttpException('This email has been used.', 400);
     }
 
-    const hashPassword = await hash(createUser.password, 10);
+    const hashedPassword = await hash(createUser.password, 10);
 
-    const result = await this.prisma.user.create({
-      data: { ...createUser, password: hashPassword },
+    const avatar =
+      createUser.gender === 'MALE' ? 'male-avatar.png' : 'female-avatar.png';
+
+    const newUser = await this.prisma.user.create({
+      data: {
+        ...createUser,
+        profileImage: avatar,
+        password: hashedPassword,
+        birth: new Date(createUser.birth),
+      },
     });
 
-    return result;
+    return newUser;
   }
 
   async getOtherUsers(

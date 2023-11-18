@@ -29,6 +29,7 @@ model User {
   profileImage    String? @default("/profile-placeholder.jpg") 
   coverImage      String? @default("/cover-placeholder.png") 
   followingIds    String[]
+  emailVerified   Boolean?
   google_id       String?
 
   createdAt       DateTime @default(now())
@@ -39,9 +40,11 @@ model User {
 
   posts         Post[]
   comments      Comment[]
+  codes         Code[]
   messages      Message[]
   notifications Notification[]
 }
+
 
 model Conversation {
   id             String   @id @default(uuid()) @map("_id")
@@ -81,20 +84,6 @@ model Post {
 
   comments    Comment[]
 }
-
-// model SharedPost {
-//   id         String   @id @default(uuid()) @map("_id")
-//   likedIds    String[]  
-//   createdAt  DateTime    @default(now())
-//   updatedAt  DateTime @updatedAt
-//   comments Comment[]
-
-//   userId String
-//   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-//   postId     String 
-//   post       Post  @relation(fields: [postId], references: [id], onDelete: Cascade)
-// }
 
 model Image {
   id         String   @id @default(uuid()) @map("_id")
@@ -141,3 +130,18 @@ model Notification {
   receiver User @relation(fields: [receiverId], references: [id], onDelete: Cascade)
 }
 
+enum CodeType {
+  OTP
+  RESET
+}
+
+model Code {
+  id             String   @id @default(uuid()) @map("_id")
+  code           String
+  type           CodeType
+  createdAt      DateTime @default(now())
+  expiredAt      DateTime
+  
+  userId         String
+  user          User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

@@ -1,5 +1,4 @@
 import { Tokens } from 'types';
-import { User } from '@prisma/client';
 import { LoginDto } from './dto/login.dto';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -20,6 +19,7 @@ import {
 } from '@nestjs/common';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { Response } from 'express';
+import { EmailVerifiedDto, OTPDTo } from './dto/otp.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -28,7 +28,7 @@ export class AuthController {
   @Public()
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  register(@Body() body: RegisterDto): Promise<User> {
+  register(@Body() body: RegisterDto): Promise<void> {
     return this.authService.signup(body);
   }
 
@@ -67,14 +67,28 @@ export class AuthController {
   @Public()
   @Post('verify-email')
   @HttpCode(HttpStatus.OK)
-  verifyEmail(@Body() { email }: { email: string }) {
-    return this.authService.verifyEmail(email);
+  verifyEmail(@Body() data: EmailVerifiedDto) {
+    return this.authService.verifyEmail(data);
+  }
+
+  @Public()
+  @Post('verify-otp')
+  @HttpCode(HttpStatus.OK)
+  verifyOTP(@Body() otpDto: OTPDTo): Promise<Tokens> {
+    return this.authService.verifyOTP(otpDto);
+  }
+
+  @Public()
+  @Post('resend-otp')
+  @HttpCode(HttpStatus.OK)
+  resendOTP(@Body() data: EmailVerifiedDto): Promise<void> {
+    return this.authService.resendOTP(data);
   }
 
   @Public()
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
-  resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
+  resetPassword(@Body() resetPasswordDto: ResetPasswordDto): Promise<Tokens> {
     return this.authService.resetPassword(resetPasswordDto);
   }
 }

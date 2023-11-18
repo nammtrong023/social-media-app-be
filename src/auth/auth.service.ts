@@ -9,7 +9,6 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma.service';
 import { compare, hash } from 'bcryptjs';
 import { RegisterDto } from './dto/register.dto';
-import { User } from '@prisma/client';
 import { LoginDto } from './dto/login.dto';
 import { Tokens } from 'types';
 import { ConfigService } from '@nestjs/config';
@@ -17,6 +16,8 @@ import { MailService } from 'src/mail/mail.service';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { OAuth2Client } from 'google-auth-library';
 import { Response } from 'express';
+import { EmailVerifiedDto, OTPDTo } from './dto/otp.dto';
+import { CodeType } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -27,7 +28,7 @@ export class AuthService {
     private config: ConfigService,
   ) {}
 
-  async signup(createDto: RegisterDto): Promise<User> {
+  async signup(createDto: RegisterDto): Promise<void> {
     const user = await this.prisma.user.findUnique({
       where: {
         email: createDto.email,
@@ -40,11 +41,19 @@ export class AuthService {
 
     const hashedPassword = await hash(createDto.password, 10);
 
-    const result = await this.prisma.user.create({
-      data: { ...createDto, password: hashedPassword },
+    const avatar =
+      createDto.gender === 'MALE' ? 'male-avatar.png' : 'female-avatar.png';
+
+    const newUser = await this.prisma.user.create({
+      data: {
+        ...createDto,
+        profileImage: avatar,
+        password: hashedPassword,
+        birth: new Date(createDto.birth),
+      },
     });
 
-    return result;
+    return await this.mailService.sendOTPVerification(newUser.email);
   }
 
   async login(data: LoginDto): Promise<Tokens> {
@@ -55,7 +64,11 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new HttpException('Account is not existed', 401);
+      throw new UnauthorizedException('Account is not existed');
+    }
+
+    if (!user.emailVerified) {
+      throw new UnauthorizedException('Unverified email');
     }
 
     const verify = await compare(data.password, user.password);
@@ -86,6 +99,17 @@ export class AuthService {
         email: data.email,
       },
     });
+
+    if (user && !user.google_id) {
+      await this.prisma.user.update({
+        where: {
+          email: data.email,
+        },
+        data: {
+          google_id: data.sub,
+        },
+      });
+    }
 
     if (user) {
       const tokens = await this.generateTokens(user.id, user.email);
@@ -151,6 +175,155 @@ export class AuthService {
     return await this.googleLogin(user.access_token);
   }
 
+  async verifyEmail(data: EmailVerifiedDto) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        email: data.email,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Not found email');
+    }
+
+    const payload = { email: user.email };
+    const expiredAt = this.config.get<string>('EXP_RESET');
+
+    const resetToken = await this.jwtService.signAsync(payload, {
+      secret: this.config.get<string>('RESET_SECRET'),
+      expiresIn: expiredAt,
+    });
+
+    const minute = 1000 * 60;
+    const timeout = Date.now() + minute + parseInt(expiredAt);
+
+    await this.prisma.code.create({
+      data: {
+        code: resetToken,
+        type: CodeType.RESET,
+        userId: user.id,
+        expiredAt: new Date(timeout),
+      },
+    });
+
+    await this.mailService.sendUserConfirmation(user, resetToken);
+  }
+
+  async resetPassword(resetPasswordDto: ResetPasswordDto): Promise<Tokens> {
+    const { newPassword, confirmNewPassword, resetToken } = resetPasswordDto;
+
+    const decodedToken = this.jwtService.decode(resetToken);
+
+    if (typeof decodedToken !== 'string' && decodedToken.email) {
+      const user = await this.prisma.user.findFirst({
+        where: { email: decodedToken.email },
+      });
+
+      const hasCode = await this.prisma.code.findFirst({
+        where: {
+          userId: user.id,
+        },
+      });
+
+      if (!hasCode || !user) {
+        throw new UnauthorizedException();
+      }
+
+      if (newPassword !== confirmNewPassword) {
+        throw new HttpException('Password does not match', 400);
+      }
+
+      const hashedPassword = await hash(confirmNewPassword, 10);
+
+      await this.prisma.user.update({
+        where: { email: user.email },
+        data: {
+          emailVerified: true,
+          password: hashedPassword,
+        },
+      });
+
+      await this.prisma.code.deleteMany({
+        where: {
+          userId: user.id,
+          type: CodeType.RESET,
+        },
+      });
+
+      const tokens = await this.generateTokens(user.id, user.email);
+      await this.updateRtHash(user.id, tokens.refreshToken);
+
+      return tokens;
+    } else {
+      throw new UnauthorizedException();
+    }
+  }
+
+  async verifyOTP(otpDto: OTPDTo): Promise<Tokens> {
+    const { otp, email } = otpDto;
+
+    const user = await this.prisma.user.findFirst({
+      where: {
+        email,
+      },
+    });
+
+    const hasOTP = await this.prisma.code.findFirst({
+      where: {
+        userId: user.id,
+      },
+    });
+
+    if (!hasOTP || !user) {
+      throw new HttpException('User not found', 404);
+    }
+
+    const currentDateTime = new Date(Date.now());
+    if (hasOTP.expiredAt < currentDateTime) {
+      throw new HttpException('User OTP has expired', 400);
+    }
+
+    const otpMatch = await compare(otp, hasOTP.code);
+    if (!otpMatch) {
+      throw new HttpException('User OTP does not match', 400);
+    }
+
+    await this.prisma.user.update({
+      where: {
+        email: user.email,
+      },
+      data: {
+        emailVerified: true,
+      },
+    });
+
+    await this.prisma.code.deleteMany({
+      where: {
+        userId: hasOTP.userId,
+        type: CodeType.OTP,
+      },
+    });
+
+    const tokens = await this.generateTokens(user.id, user.email);
+    await this.updateRtHash(user.id, tokens.refreshToken);
+
+    return tokens;
+  }
+
+  async resendOTP(data: EmailVerifiedDto) {
+    const hasEmail = await this.prisma.user.findFirst({
+      where: {
+        email: data.email,
+      },
+    });
+
+    if (!hasEmail) {
+      throw new HttpException('Not found email', 404);
+    }
+
+    return await this.mailService.sendOTPVerification(data.email);
+  }
+
   async refreshTokens(userId: string, refreshToken: string): Promise<Tokens> {
     const user = await this.prisma.user.findUnique({
       where: {
@@ -168,63 +341,6 @@ export class AuthService {
     await this.updateRtHash(user.id, tokens.refreshToken);
 
     return tokens;
-  }
-
-  async verifyEmail(email: string) {
-    const user = await this.prisma.user.findFirst({
-      where: {
-        email,
-      },
-    });
-
-    if ((user && user.google_id) || !user) {
-      throw new NotFoundException('Not found email');
-    }
-
-    const payload = { email: user.email };
-
-    const resetToken = await this.jwtService.signAsync(payload, {
-      secret: this.config.get<string>('RESET_SECRET'),
-      expiresIn: this.config.get<string>('EXP_RESET'),
-    });
-
-    await this.mailService.sendUserConfirmation(user, resetToken);
-  }
-
-  async resetPassword(resetPasswordDto: ResetPasswordDto) {
-    const { newPassword, confirmNewPassword, resetToken } = resetPasswordDto;
-
-    const decodedToken = this.jwtService.decode(resetToken);
-
-    if (typeof decodedToken !== 'string' && decodedToken.email) {
-      const user = await this.prisma.user.findFirst({
-        where: { email: decodedToken.email },
-      });
-
-      if (!user) {
-        throw new UnauthorizedException();
-      }
-
-      if (newPassword !== confirmNewPassword) {
-        throw new HttpException('Password does not match', 400);
-      }
-
-      const hashedPassword = await hash(confirmNewPassword, 10);
-
-      const tokens = await this.generateTokens(user.id, user.email);
-
-      await this.prisma.user.update({
-        where: { email: user.email },
-        data: {
-          refreshToken: tokens.refreshToken,
-          password: hashedPassword,
-        },
-      });
-
-      return tokens;
-    } else {
-      throw new UnauthorizedException();
-    }
   }
 
   async updateRtHash(userId: string, refreshToken: string): Promise<void> {

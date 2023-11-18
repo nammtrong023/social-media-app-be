@@ -3,6 +3,7 @@ import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handleba
 import { Module } from '@nestjs/common';
 import { MailService } from './mail.service';
 import { ConfigService } from '@nestjs/config';
+import { PrismaService } from 'src/prisma.service';
 
 @Module({
   imports: [
@@ -32,7 +33,7 @@ import { ConfigService } from '@nestjs/config';
     }),
   ],
 
-  providers: [MailService],
+  providers: [MailService, PrismaService],
   exports: [MailService],
 })
 export class MailModule {}
