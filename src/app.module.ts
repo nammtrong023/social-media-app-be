@@ -12,10 +12,28 @@ import { ConversationsModule } from './conversations/conversations.module';
 import { EventsModule } from './events/events.module';
 import { MessagesModule } from './messages/messages.module';
 import { MailModule } from './mail/mail.module';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ThrottlerModule.forRoot([
+      {
+        name: 'short',
+        ttl: 1000,
+        limit: 3,
+      },
+      {
+        name: 'medium',
+        ttl: 10000,
+        limit: 20,
+      },
+      {
+        name: 'long',
+        ttl: 60000,
+        limit: 100,
+      },
+    ]),
     AuthModule,
     UsersModule,
     PostsModule,
@@ -31,6 +49,10 @@ import { MailModule } from './mail/mail.module';
     {
       provide: APP_GUARD,
       useClass: AtGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
     },
   ],
 })
