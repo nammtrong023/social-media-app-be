@@ -42,7 +42,7 @@ export class AuthService {
     const hashedPassword = await hash(createDto.password, 10);
 
     const avatar =
-      createDto.gender === 'MALE' ? 'male-avatar.png' : 'female-avatar.png';
+      createDto.gender === 'MALE' ? '/male-avatar.png' : '/female-avatar.png';
 
     const newUser = await this.prisma.user.create({
       data: {
