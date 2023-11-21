@@ -26,6 +26,7 @@ The frontend source code for this project, you can found in the [frontend reposi
 
 ```shell
 
+FRONTEND_URL=
 DATABASE_URL=
 
 AT_SECRET=

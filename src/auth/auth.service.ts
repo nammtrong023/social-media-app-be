@@ -134,11 +134,13 @@ export class AuthService {
   }
 
   async generateRedirectUrl(res: Response) {
-    res.header('Access-Control-Allow-Origin', 'http://localhost:3000');
+    const frontendUrl = this.config.get<string>('FRONTEND_URL');
+
+    res.header('Access-Control-Allow-Origin', frontendUrl);
     res.header('Access-Control-Allow-Credentials', 'true');
     res.header('Referrer-Policy', 'no-referrer-when-downgrade');
 
-    const redirectUrl = 'http://localhost:3000/sign-in';
+    const redirectUrl = `${frontendUrl}/sign-in`;
 
     const oAuthClient = new OAuth2Client(
       this.config.get<string>('GOOGLE_CLIENT_ID'),
@@ -159,7 +161,8 @@ export class AuthService {
   }
 
   async getDataFromGG(code: string): Promise<Tokens> {
-    const redirectUrl = 'http://localhost:3000/sign-in';
+    const frontendUrl = this.config.get<string>('FRONTEND_URL');
+    const redirectUrl = `${frontendUrl}/sign-in`;
 
     const oAuthClient = new OAuth2Client(
       this.config.get<string>('GOOGLE_CLIENT_ID'),

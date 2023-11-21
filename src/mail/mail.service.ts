@@ -3,16 +3,19 @@ import { CodeType, User } from '@prisma/client';
 import { PrismaService } from 'src/prisma.service';
 import { MailerService } from '@nestjs-modules/mailer';
 import { HttpException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class MailService {
   constructor(
     private mailerService: MailerService,
     private prisma: PrismaService,
+    private config: ConfigService,
   ) {}
 
   async sendUserConfirmation(user: User, token: string) {
-    const url = `http://localhost:3000/password-recovery?reset-token=${token}`;
+    const frontendUrl = this.config.get<string>('FRONTEND_URL');
+    const url = `${frontendUrl}/password-recovery?reset-token=${token}`;
 
     await this.mailerService.sendMail({
       to: user.email,
