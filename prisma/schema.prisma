@@ -10,8 +10,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
-
 enum Gender {
   MALE
   FEMALE
@@ -145,3 +143,4 @@ model Code {
   userId         String
   user          User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
