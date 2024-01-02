@@ -11,7 +11,7 @@ pipeline {
                 expression { params.ACTION == 'Build' }
             }
             steps {
-                withCredentials([file(credentialsId: 'secret-file', variable: 'SECRET_FILE')]) {
+                withCredentials([file(credentialsId: 'secret-file-be', variable: 'SECRET_FILE')]) {
                     script {
                         writeFile file: '.env', text: sh(script: "cat $SECRET_FILE", returnStdout: true).trim()
                     }
