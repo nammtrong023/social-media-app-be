@@ -64,6 +64,6 @@ export class MailService {
       },
     });
 
-    throw new HttpException('Otp has been sent', 201);
+    return new HttpException('Otp has been sent', 201);
   }
 }

@@ -54,8 +54,9 @@ export class AuthService {
         },
       });
 
-      return await this.mailService.sendOTPVerification(newUser.email);
+      await this.mailService.sendOTPVerification(newUser.email);
     } catch (error) {
+      console.log(error);
       throw new HttpException('Internal server', 500);
     }
   }
