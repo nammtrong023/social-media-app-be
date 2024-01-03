@@ -81,7 +81,7 @@ export class AuthController {
   @Public()
   @Post('resend-otp')
   @HttpCode(HttpStatus.OK)
-  resendOTP(@Body() data: EmailVerifiedDto): Promise<void> {
+  resendOTP(@Body() data: EmailVerifiedDto) {
     return this.authService.resendOTP(data);
   }
 
