@@ -2,7 +2,7 @@
 
 ## Deployment
 
-[Demo link](...)
+[Demo link](http://13.212.177.233:3000)
 
 ## Frontend Source
 
