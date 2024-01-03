@@ -29,31 +29,35 @@ export class AuthService {
   ) {}
 
   async signup(createDto: RegisterDto): Promise<void> {
-    const user = await this.prisma.user.findUnique({
-      where: {
-        email: createDto.email,
-      },
-    });
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: {
+          email: createDto.email,
+        },
+      });
 
-    if (user) {
-      throw new HttpException('This email has been used.', 400);
+      if (user) {
+        throw new HttpException('This email has been used.', 400);
+      }
+
+      const hashedPassword = await hash(createDto.password, 10);
+
+      const avatar =
+        createDto.gender === 'MALE' ? '/male-avatar.png' : '/female-avatar.png';
+
+      const newUser = await this.prisma.user.create({
+        data: {
+          ...createDto,
+          profileImage: avatar,
+          password: hashedPassword,
+          birth: new Date(createDto.birth),
+        },
+      });
+
+      return await this.mailService.sendOTPVerification(newUser.email);
+    } catch (error) {
+      throw new HttpException('Internal server', 500);
     }
-
-    const hashedPassword = await hash(createDto.password, 10);
-
-    const avatar =
-      createDto.gender === 'MALE' ? '/male-avatar.png' : '/female-avatar.png';
-
-    const newUser = await this.prisma.user.create({
-      data: {
-        ...createDto,
-        profileImage: avatar,
-        password: hashedPassword,
-        birth: new Date(createDto.birth),
-      },
-    });
-
-    return await this.mailService.sendOTPVerification(newUser.email);
   }
 
   async login(data: LoginDto): Promise<Tokens> {
